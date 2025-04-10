@@ -1,0 +1,101 @@
+---
+ - hosts: localhost                                 #localhost because currently we don't have any ec2 instances to do anything
+   tasks: 
+      - name: create vpc                            # first task to create a vpc with the necessary configurations
+        amazon.aws.ec2_vpc_net:                     # vpc module
+            name: custom_vpc                        
+            cidr_block: 10.0.0.0/16                 # cidr_block is a parameter which defines the range of ip adresses for our vpc
+            region: us-east-1
+        register: vpcAuto
+
+      
+      - name: create subnet for first az            # creating subnets for all 6 AZ
+        amazon.aws.ec2_vpc_subnet:
+           vpc_id: "{{ vpcAuto.vpc.id }}"
+           state: present
+           az: us-east-1a                                    # here change AZ id this for all 6 AZ via service health panel on ec2 dashboard 
+           cidr: 10.0.1.0/28
+        register: az1_use1
+
+      - name: create subnet for second az           
+        amazon.aws.ec2_vpc_subnet:
+           vpc_id: "{{ vpcAuto.vpc.id }}"
+           state: present
+           az: us-east-1b                                    
+           cidr: 10.0.2.0/28
+        register: az2_use1
+      
+      - name: create subnet for third az           
+        amazon.aws.ec2_vpc_subnet:
+           vpc_id: "{{ vpcAuto.vpc.id }}"
+           state: present
+           az: us-east-1c                                      
+           cidr: 10.0.3.0/28
+        register: az3_use1
+      
+      - name: create subnet for fourth az           
+        amazon.aws.ec2_vpc_subnet:
+           vpc_id: "{{ vpcAuto.vpc.id }}"
+           state: present
+           az: us-east-1d                                    
+           cidr: 10.0.4.0/28
+        register: az4_use1
+
+      - name: create subnet for fifth az           
+        amazon.aws.ec2_vpc_subnet:
+           vpc_id: "{{ vpcAuto.vpc.id }}"
+           state: present
+           az: us-east-1e                                   
+           cidr: 10.0.5.0/28
+        register: az5_use1
+
+      - name: create subnet for sixth az           
+        amazon.aws.ec2_vpc_subnet:
+           vpc_id: "{{ vpcAuto.vpc.id }}"
+           state: present
+           az: us-east-1f                                     
+           cidr: 10.0.6.0/28
+        register: az6_use1
+
+
+      - name: create internet gateway              # creating an internet gateway
+        amazon.aws.ec2_vpc_igw:
+           vpc_id: "{{ vpcAuto.vpc.id }}"
+           state: present
+        register: netgw
+
+
+      - name: create custom route table          
+        amazon.aws.ec2_vpc_route_table:
+           vpc_id: "{{ vpcAuto.vpc.id }}"
+           region: us-east-1
+           subnets:
+             - "{{ az1_use1.subnet.id }}"           # here all subnets are given an internet connection
+             - "{{ az2_use1.subnet.id }}"
+             - "{{ az3_use1.subnet.id }}"
+             - "{{ az4_use1.subnet.id }}"
+             - "{{ az5_use1.subnet.id }}"
+             - "{{ az6_use1.subnet.id }}"
+           routes:
+             - dest: 0.0.0.0/0
+               gateway_id: "{{ netgw.gateway_id }}"
+
+      
+      - name: create security group              # here a security group is created with 22 port remote the host and 80 to access the web server
+                                                 
+        amazon.aws.ec2_group:
+           name: ssh-web                          
+           description: allow ssh and http
+           vpc_id: "{{ vpcAuto.vpc.id }}"
+           region: us-east-1
+           rules:
+             - proto: tcp
+               ports: 22
+               cidr_ip: 0.0.0.0/0
+             - proto: tcp
+               ports: 80
+               cidr_ip: 0.0.0.0/03
+
+
+      
+      
